@@ -1,0 +1,28 @@
+[project]
+name = "paper-1-skin-lesion"
+version = "0.1.0"
+description = "Reproduction of Shetty et al. (2022), Sci Rep 12:18134 - skin lesion classification with ML and CNN on HAM10000"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "numpy",
+    "pandas",
+    "opencv-python-headless",
+    "mahotas",
+    "h5py",
+    "scikit-learn",
+    "matplotlib",
+    "keras>=3.8",
+    "torch>=2.7",
+]
+
+[tool.uv]
+package = false
+
+# Keras 3 runs on the PyTorch backend; cu128 wheels support RTX 50xx (sm_120).
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
