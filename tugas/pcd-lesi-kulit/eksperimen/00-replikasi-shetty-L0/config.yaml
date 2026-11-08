@@ -1,0 +1,32 @@
+# Replikasi Shetty dkk. (2022) dengan protokol PERSIS seperti paper (L0).
+# Setiap nilai diberi sumber: [P] = tertulis di paper, [A] = asumsi re-implementasi (lihat README).
+nama: replikasi-shetty-L0
+
+subset:
+  per_kelas: 100            # [P] "choosing 100 images per class" (hlm. 4)
+  seed_list: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]   # [A] paper tidak menyebut cara memilih; diulang 10x untuk melihat variasi
+
+ml:
+  ukuran: 220               # [P] resize 220x220 (hlm. 4)
+  bins_hsv: 8               # [A] jumlah bin tidak dilaporkan; 8x8x8 -> 532 fitur
+  minmax_sebelum_split: true   # [A] scaler di-fit pada SEMUA fitur sebelum split (pola kode umum; bocor)
+  test_size: 0.2            # [P] 80:20 (hlm. 6)
+  stratify: false           # [A] dari Tabel 7: support 37/33/35/43/44/44/44 -> tidak berstrata
+  split_seed: 9             # [A]
+  kfold: 10                 # [P] 10-fold CV; Tabel 4 = kelipatan 1/560 & 1/1120 -> CV pada porsi latih
+
+cnn:
+  ukuran: 96                # [P] 96x96x3 (hlm. 4)
+  epoch: 150                # [P] Tabel 3
+  batch: 32                 # [P] Tabel 3
+  lr_awal: 1.0e-3           # [P] Tabel 3 "0.001-0.00001"
+  lr_akhir: 1.0e-5          # [P] -> [A] dijadwalkan turun eksponensial per epoch
+  test_size: 0.2            # [P] -> uji 280 citra (Tabel 7)
+  stratify: false           # [A] sama seperti ML
+  augment:                  # [A] paper: "random transformations (rotations, shearing, etc.)"
+    rotasi_derajat: 25
+    geser: 0.1
+    shear_derajat: 0.2      # [A] mengikuti konvensi Keras ImageDataGenerator (derajat)
+    zoom: 0.2
+    flip_h: true
+  seed_list: [0, 1, 2]      # [A] seed pelatihan; subset memakai seed_list subset pertama yang sama

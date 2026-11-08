@@ -1,0 +1,21 @@
+# Semua parameter eksperimen di sini — jangan di-hardcode di run.py.
+nama: contoh-denoising
+seed: 42
+
+data:
+  # path relatif terhadap root proyek; kosongkan untuk memakai citra contoh scikit-image
+  folder: ""
+  pola: "*.png"
+  maks_citra: 5
+
+derau:
+  jenis: gaussian   # gaussian | salt_pepper
+  sigma: 25         # untuk gaussian (skala 0-255)
+  rasio: 0.05       # untuk salt_pepper
+
+metode:
+  baseline: {nama: tanpa_filter}
+  kandidat:
+    - {nama: mean, ukuran: 3}
+    - {nama: median, ukuran: 3}
+    - {nama: gaussian, ukuran: 5, sigma: 1.0}

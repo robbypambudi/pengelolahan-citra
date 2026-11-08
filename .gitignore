@@ -1,2 +1,20 @@
 dataverse_files
 dataverse_files.zip
+
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+.pytest_cache/
+~$*.docx
+~$*.pptx
+
+# data & keluaran eksperimen (besar, bisa dibuat ulang)
+data/mentah/*
+data/olahan/*
+!data/**/.gitkeep
+tugas/**/eksperimen/**/hasil/
+*.pt
+*.pth
+*.ckpt
