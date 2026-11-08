@@ -1,0 +1,32 @@
+# Uji jalan; angkanya TIDAK untuk laporan.
+# Eksperimen 02 — strategi ketidakseimbangan kelas pada A0.
+# Semua pengaturan selain `strategi` SAMA dengan eksperimen 01 (run 20261108-222958).
+nama: imbalance-a0-cepat
+mode: cepat
+seed: 42
+
+data: {ukuran_cache: 256, ukuran_input: 224, sumber_mask: otsu, maks_citra: 1500}
+
+split:
+  n_fold: 5
+  seed_ulangan: [0]       # split identik dengan eksperimen 01
+  fold_dipakai: [0]
+  frac_validasi: 0.1      # validasi dalam: dasar pemilihan strategi dan pencarian bias keputusan
+
+latih: {epoch: 2, batch: 64, lr_dasar: 3.0e-4, lr_modul: 3.0e-3, weight_decay: 1.0e-4,
+        warmup_epoch: 1, amp: true, batch_eval: 256}
+
+augmentasi: {rotasi: true, flip: true, skala_min: 0.8, geser: 0.1, kecerahan: 0.1, kontras: 0.1}
+
+model: {lapisan_m3: 16, lebar_cincin_px: 16, k_rambut: 11, p_awal: 6.0, bottleneck: 128}
+
+strategi:
+  - {kode: S1-bobot-penuh, loss: ce, bobot: penuh}                  # = eksperimen 01 (acuan)
+  - {kode: S0-tanpa, loss: ce, bobot: tanpa, koreksi_prior: true}  # CE polos + koreksi prior post-hoc
+  - {kode: S2-bobot-akar, loss: ce, bobot: akar}
+  - {kode: S3-bobot-efektif, loss: ce, bobot: efektif, beta: 0.999}
+  - {kode: S4-sampler, loss: ce, bobot: tanpa, sampler: seimbang}
+  - {kode: S5-focal-akar, loss: focal, gamma: 2.0, bobot: akar}
+  - {kode: S6-logit-adj, loss: logit_adjusted, tau: 1.0}
+
+statistik: {pembanding: S1-bobot-penuh, alpha: 0.05}
