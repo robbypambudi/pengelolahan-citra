@@ -4,6 +4,7 @@
 
 **Pengusul:** Robby Ulung Pambudi (NRP 6025252022) · Magister Informatika ITS · Mata kuliah Pengolahan Citra
 **Status:** draf untuk disetujui (Gate 0) · 21 Oktober 2026 · notulen perdebatan: `riset/PLAN0-SIDANG.md`
+**Revisi v1.1 (8 November 2026):** tambah RQ5 (arsitektur usulan Derm-MobileNetV3), H5a–H5d, dan perbaikan rumusan H2b. Dasarnya penelusuran kebaruan di `riset/LITERATUR-DERM-MOBILENETV3.md`.
 
 ---
 
@@ -27,13 +28,21 @@ Masalah split per citra dan duplikat sudah dikenal (LesionBench; Cassidy dkk., 2
 - **RQ2, ablasi praproses.** Berapa efek utama dan interaksi dari penghapusan rambut (DullRazor), *color constancy* (Shades of Gray), dan CLAHE terhadap BACC dan sensitivitas melanoma, pada model berbasis fitur handcrafted dan pada CNN ringan?
 - **RQ3, representasi.** Dengan protokol dan anggaran tuning yang sama, bagaimana fitur handcrafted (histogram HSV + Hu moments + Haralick) dibanding embedding MobileNetV3 dan fusi keduanya?
 - **RQ4, segmentasi (opsional).** Bagaimana citra penuh dibanding crop dengan margin dan latar dihapus, dengan segmentasi Otsu+morfologi vs U-Net?
+- **RQ5, arsitektur usulan (Derm-MobileNetV3).** Apakah menanamkan operasi pengolahan citra yang bisa dilatih ke MobileNetV3-Large meningkatkan BACC dan sensitivitas melanoma dibanding MobileNetV3 polos, praproses tetap terbaik (RQ2), dan modifikasi blok ala Lilhore? Blok asli MobileNetV3 dipertahankan. Modul ditambahkan dengan inisialisasi identitas atau gerbang nol:
+  - **M3 (kontribusi utama):** *pooling* lesi–kulit sekitar berpanduan *mask*. Fitur di-*pool* di dalam lesi, di pita kulit sekitar dengan lebar terkontrol, dan selisih keduanya, pada citra penuh tanpa *crop*. *Mask* dari Otsu+morfologi atau U-Net.
+  - **M1 (kontribusi kedua):** lapisan input yang bisa dilatih, berisi *color constancy* Shades of Gray dengan eksponen *p* dipelajari (setara GeM pooling pada kanal RGB) dan pelemah rambut *black-hat* dengan *soft-mask*.
+  - **M2 (opsional, bukan klaim kebaruan):** cabang *covariance pooling* dari blok tengah sebagai padanan Haralick yang bisa dilatih.
 
 ## 3. Hipotesis (dibekukan; SESOI = 2 poin BACC)
 - **H1.** Total inflasi (L0 − L4) ≥ 5 poin BACC pada kedua pipeline. Untuk Shetty, komponen terbesar adalah L1 (akurasi latih) dan L2 (augmentasi sebelum split).
 - **H2a.** Efek utama DullRazor pada seluruh data < SESOI (uji ekuivalensi), tetapi lebih besar pada strata citra berambut.
-- **H2b (eksploratif).** Efek *color constancy* lebih besar pada partisi eksternal test (316 citra) daripada partisi internal (1.196). Ini uji konfirmasi temuan Barata dkk. (2015) pada CNN.
+- **H2b (eksploratif).** Efek *color constancy* lebih besar pada partisi eksternal test (316 citra) daripada partisi internal (1.196). Ini menguji apakah temuan Barata dkk. (2015), yang diperoleh pada sistem *bag-of-features*, juga berlaku untuk CNN.
 - **H2c.** Praproses tidak menurunkan sensitivitas melanoma lebih dari SESOI. Ini sekaligus menguji risiko CC menghapus ciri warna diagnostik.
 - **H3.** Fitur handcrafted saja < CNN dengan selisih ≥ SESOI. Fusi tidak lebih buruk dari CNN (*non-inferior*). BACC handcrafted pada protokol bersih jauh di bawah 87% yang dilaporkan Shetty.
+- **H5a.** MobileNetV3 + M3 > MobileNetV3 polos dengan selisih ≥ SESOI, dan tidak lebih buruk dari *crop* dengan margin (RQ4).
+- **H5b.** M1 tidak lebih buruk (*non-inferior*) daripada praproses tetap terbaik dari RQ2. Keunggulannya lebih besar pada partisi eksternal (eksploratif, sejalan dengan H2b).
+- **H5c.** Derm-MobileNetV3 penuh > varian modifikasi blok ala Lilhore (ECA + *dilated conv*) dengan selisih ≥ SESOI pada anggaran tuning yang sama.
+- **H5d (uji jalan pintas).** Varian "cincin saja" (fitur lesi ditutup) memiliki BACC jauh di bawah varian "lesi saja". Bila tidak, ada indikasi model memanfaatkan artefak latar (Bissoto dkk., 2019), dan klaim H5a harus dibatasi.
 
 ## 4. Desain singkat
 - **Data:** HAM10000 + metadata `lesion_id` sebagai data latih/CV. ISIC 2018 Task 3 Test (1.512 citra) sebagai uji hold-out resmi, termasuk partisi eksternal 316 citra bila label sumbernya tersedia. ISIC 2018 Task 1 untuk mask U-Net, setelah citra yang beririsan dikeluarkan. Duplikat dideteksi dengan *perceptual hash* dan digabung ke satu grup.
@@ -42,10 +51,20 @@ Masalah split per citra dan duplikat sudah dikenal (LesionBench; Cassidy dkk., 2
   - P-S: re-implementasi Shetty (fitur global + 7 klasifier; CNN 96×96)
   - P-L: re-implementasi Lilhore (segmentasi → crop → MobileNetV3-Large → Bayesian optimization), dengan tabel kesetiaan
   - P-F: fusi
+  - P-D: Derm-MobileNetV3, dengan varian ablasi berikut, semuanya pada protokol, anggaran tuning, dan seed yang sama:
+    - A0: MobileNetV3-Large polos
+    - A0+P: A0 + praproses tetap terbaik RQ2
+    - AL: A0 + modifikasi blok ala Lilhore
+    - A1: A0 + M1
+    - A3: A0 + M3, dengan sub-varian *mask* Otsu vs U-Net, "lesi saja", "cincin saja", dan lebar cincin
+    - A4: M1 + M3, ditambah M2 bila waktu cukup
+  - Pembanding eksternal: BACC 0,764 yang dilaporkan PLCRD pada HAM10000 dengan split per lesi (Rahi dkk., 2026, pratinjau). Ini klaim penulisnya, dan protokolnya tidak identik dengan protokol kita.
+  - Nilai parameter yang dipelajari (*p*, gerbang modul, lebar cincin) dicatat dan dianalisis sebagai bukti tahap mana yang benar-benar dipakai jaringan.
 - **Metrik:**
   - Utama: BACC
   - Sekunder: sensitivitas melanoma @ spesifisitas 80%, F1 makro, AUROC makro, ECE
   - Segmentasi: Dice/IoU dan laju kegagalan
+  - Biaya model (RQ5): jumlah parameter, FLOPs, dan latensi inferensi
 - **Statistik:**
   - Antar-fold: corrected resampled t-test (Nadeau & Bengio, 2003)
   - Faktorial RQ2: model linear efek campuran
@@ -60,13 +79,17 @@ Masalah split per citra dan duplikat sudah dikenal (LesionBench; Cassidy dkk., 2
 2. **Ablasi per langkah** praproses pengolahan citra di bawah protokol bersih, termasuk analisis per strata kerambutan dan per kelas.
 3. Perbandingan adil handcrafted vs CNN vs fusi.
 4. Kode, file split, dan konfigurasi terbuka sebagai *baseline* yang dapat direproduksi.
+5. **Derm-MobileNetV3**, MobileNetV3-Large dengan prior pengolahan citra yang bisa dilatih. Kebaruannya ada pada kombinasi dan evaluasinya, bukan pada operator tunggal:
+   - M3 memperluas *polar pooling* berpanduan *mask* DermaKNet (González-Díaz, 2019) dan pemisahan lesi–konteks PLCRD (Rahi dkk., 2026). Yang ditambahkan adalah pita kulit di luar batas lesi dan fitur selisih, pada citra penuh tanpa *crop*.
+   - M1 menempatkan Shades of Gray/GeM (Radenović dkk., 2019) sebagai lapisan input yang dilatih bersama loss klasifikasi. Optimasi bersama penghapusan artefak dan klasifikasi disebut sebagai pekerjaan ke depan oleh Hammouda dkk. (2026).
+   - Klaim kebaruan ditulis dalam bentuk "berdasarkan penelusuran [tanggal, basis data, kata kunci], belum ditemukan …", bukan "yang pertama".
 
 ## 6. Cakupan bertingkat
 | Tingkat | Isi | Untuk |
 |---|---|---|
 | **MVP** | RQ1 pada P-S + RQ2 (RF-handcrafted & MobileNetV3) + uji hold-out 1.512 | Tugas kuliah (wajib) |
-| **Inti** | + RQ1 pada P-L (Otsu & U-Net) + RQ3 | Tugas (bila waktu cukup) / dasar publikasi |
-| **Publikasi** | + RQ4, uji lintas domain ISIC 2019/PH2, ulangan tambahan, rilis kode | Naskah jurnal |
+| **Inti** | + RQ1 pada P-L (Otsu & U-Net) + RQ3 + RQ5 (A0, A0+P, AL, A1, A3, A4 tanpa M2) | Tugas (bila waktu cukup) / dasar publikasi |
+| **Publikasi** | + RQ4, RQ5 dengan M2, uji lintas domain ISIC 2019/PH2, ulangan tambahan, rilis kode | Naskah jurnal |
 
 ## 7. Risiko utama & mitigasi
 | Risiko | Mitigasi |
@@ -76,6 +99,9 @@ Masalah split per citra dan duplikat sudah dikenal (LesionBench; Cassidy dkk., 2
 | MDE > SESOI (desain kurang kuat) | Pilot mengukur simpangan baku dulu; ulangan ditambah sebelum protokol dibekukan |
 | Komputasi RQ2 CNN berat (perkiraan 20–40 jam GPU) | Verifikasi di pilot; bila perlu turun ke 1×5 CV dan dinyatakan sebagai keterbatasan |
 | Kritik terhadap paper terbit disalahpahami | Rujukan per tabel/gambar, hitung ulang ditampilkan, penulis asli dihubungi sebelum publikasi |
+| Klaim kebaruan RQ5 terbantah karya yang terlewat | Sebelum protokol dibekukan, telusuri sitasi maju DermaKNet, BILSK, dan GeM di Google Scholar, dan sisir prosiding MICCAI/ISBI 2023–2026. Penelusuran awal tidak bisa mengakses Scholar, Scopus, dan IEEE Xplore. |
+| M3 memakai jalan pintas artefak di kulit sekitar (penggaris, sudut gelap, tinta) | Varian "lesi saja" dan "cincin saja" (H5d), analisis per sumber data, dan lebar cincin dibatasi |
+| Modul baru merusak fitur pralatih dan *overfit* | Inisialisasi identitas/gerbang nol; tes otomatis bahwa keluaran model pada langkah ke-0 identik dengan A0 |
 
 ## 8. Pertanyaan untuk dosen
 1. Berapa tenggat dan format luaran (laporan, presentasi, kode)?
@@ -85,10 +111,15 @@ Masalah split per citra dan duplikat sudah dikenal (LesionBench; Cassidy dkk., 2
 
 ## Daftar pustaka (sementara; diverifikasi lengkap di Plan 2)
 - Barata, C., Celebi, M. E., & Marques, J. S. (2015). Improving dermoscopy image classification using color constancy. *IEEE Journal of Biomedical and Health Informatics, 19*(3), 1146–1152.
+- Bissoto, A., Fornaciali, M., Valle, E., & Avila, S. (2019). (De)constructing bias on skin lesion datasets. In *Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops* (pp. 2766–2774). https://doi.org/10.1109/CVPRW.2019.00335
 - Cassidy, B., Kendrick, C., Brodzicki, A., Jaworek-Korjakowska, J., & Yap, M. H. (2022). Analysis of the ISIC image datasets: Usage, benchmarks and recommendations. *Medical Image Analysis, 75*, 102305. https://doi.org/10.1016/j.media.2021.102305
 - Codella, N., dkk. (2019). Skin lesion analysis toward melanoma detection 2018: A challenge hosted by the International Skin Imaging Collaboration (ISIC). arXiv:1902.03368.
+- González-Díaz, I. (2019). DermaKNet: Incorporating the knowledge of dermatologists to convolutional neural networks for skin lesion diagnosis. *IEEE Journal of Biomedical and Health Informatics, 23*(2), 547–559. https://doi.org/10.1109/JBHI.2018.2806962
+- Hammouda, N. G., Shalaby, M., Alfilh, R. H. C., & Singh, N. S. S. (2026). Hair and artifact removal in dermoscopic images using deep learning for enhanced skin cancer detection. *Scientific Reports, 16*, Article 14452. https://doi.org/10.1038/s41598-026-44545-x
 - Lilhore, U. K., dkk. (2024). A precise model for skin cancer diagnosis using hybrid U-Net and improved MobileNet-V3 with hyperparameters optimization. *Scientific Reports, 14*, 4299. https://doi.org/10.1038/s41598-024-54212-8
 - Nadeau, C., & Bengio, Y. (2003). Inference for the generalization error. *Machine Learning, 52*(3), 239–281. `[verifikasi DOI di Plan 2]`
+- Radenović, F., Tolias, G., & Chum, O. (2019). Fine-tuning CNN image retrieval with no human annotation. *IEEE Transactions on Pattern Analysis and Machine Intelligence, 41*(7), 1655–1668. https://arxiv.org/abs/1711.02512 `[verifikasi DOI jurnal]`
+- Rahi, A. M., Hossain, M. M., Joy, M. Z. H., Mridha, M. F., & Hossen, M. J. (2026). *Privileged lesion-context relational distillation for mask-free skin lesion classification* (arXiv:2607.18773) [Pratinjau]. arXiv. https://arxiv.org/abs/2607.18773
 - Shetty, B., dkk. (2022). Skin lesion classification of dermoscopic images using machine learning and convolutional neural network. *Scientific Reports, 12*, 18134. https://doi.org/10.1038/s41598-022-22644-9
 - Tschandl, P., Rosendahl, C., & Kittler, H. (2018). The HAM10000 dataset. *Scientific Data, 5*, 180161. https://doi.org/10.1038/sdata.2018.161
 - Tschandl, P., dkk. (2019). Comparison of the accuracy of human readers versus machine-learning algorithms for pigmented skin lesion classification. *The Lancet Oncology, 20*(7), 938–947. https://doi.org/10.1016/S1470-2045(19)30333-X

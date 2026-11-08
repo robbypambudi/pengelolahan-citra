@@ -1,0 +1,61 @@
+# Eksperimen 01 — RQ5: ablasi Derm-MobileNetV3 dengan CV per lesi.
+# [P] = dari riset/PROPOSAL.md, [A] = asumsi/pilihan awal (lihat README, tabel asumsi).
+nama: derm-mobilenetv3-ablasi
+mode: penuh               # penuh | cepat (cepat = uji jalan; angkanya TIDAK untuk laporan)
+seed: 42
+
+data:
+  ukuran_cache: 256       # [A] cache data/olahan/ham10000-256 (siapkan.py)
+  ukuran_input: 224       # [P] input MobileNetV3, sama dengan Lilhore
+  sumber_mask: otsu       # [P] otsu | unet (U-Net belum diimplementasikan)
+  maks_citra: null        # null = semua 10.015 citra
+
+split:
+  n_fold: 5               # [P] StratifiedGroupKFold per lesi
+  seed_ulangan: [0]       # [P] target [0, 1, 2] (3×5); mulai 1×5 dulu [A]
+  fold_dipakai: null      # null = semua fold
+  frac_validasi: 0.1      # [A] validasi dalam (per lesi): pemantauan; dipakai memilih epoch hanya bila pilih_epoch = terbaik_val
+  file: data/split/folds-v0-lesion.csv   # v0 = grup lesion_id, belum dedup pHash
+
+latih:                    # sama untuk SEMUA varian (anggaran tuning nol, adil) [A]
+  epoch: 20
+  batch: 64
+  lr_dasar: 3.0e-4        # backbone + classifier
+  lr_modul: 3.0e-3        # modul baru (M1/M2/M3); gerbang tanpa weight decay
+  weight_decay: 1.0e-4
+  warmup_epoch: 1
+  pilih_epoch: terakhir   # terakhir | terbaik_val. BACC validasi terlalu berisik (±0,07 antar-epoch, run 20261108-220753)
+  patience: 8             # hanya dipakai bila pilih_epoch = terbaik_val
+  bobot_kelas: true       # cross-entropy berbobot n/(K·n_k) dari data latih fold
+  amp: true               # bf16 autocast (M1 tetap float32)
+  batch_eval: 256
+
+augmentasi:               # hanya data latih; geometri diterapkan sama ke citra dan mask [A]
+  rotasi: true            # 0–360°
+  flip: true
+  skala_min: 0.8          # zoom-in acak 0,8–1,0
+  geser: 0.1
+  kecerahan: 0.1
+  kontras: 0.1
+
+model:
+  lapisan_m3: 16          # [A] 960 kanal, 7×7
+  lebar_cincin_px: 16     # [A] pada input 224
+  k_rambut: 11            # [A]
+  p_awal: 6.0             # [P] SoG p=6 (Barata dkk., 2015)
+  bottleneck: 128         # [A]
+
+varian:                   # [P] RQ5, H5a–H5d
+  - {kode: A0}
+  - {kode: A0+P, m1_cc: true, m1_rambut: true, praproses_tetap: true}
+  - {kode: AL, lilhore: true}
+  - {kode: A1, m1_cc: true, m1_rambut: true}
+  - {kode: A3, m3: true}
+  - {kode: A3-L, m3: true, m3_mode: lesi}
+  - {kode: A3-C, m3: true, m3_mode: cincin}
+  - {kode: A4, m1_cc: true, m1_rambut: true, m3: true}
+
+statistik:
+  pembanding: A0
+  alpha: 0.05
+  sesoi_bacc: 0.02        # [P] 2 poin BACC

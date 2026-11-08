@@ -156,6 +156,7 @@ Setiap detail yang tidak dijelaskan paper asli dicatat sebagai **asumsi re-imple
 | **E2** | RQ2 praproses | faktorial 2³: hapus rambut {0,1} × *color constancy* {0,1} × CLAHE {0,1} = 8 kombinasi × {RF-handcrafted, MobileNetV3} | split, epoch, seed |
 | **E3** | RQ3 representasi | handcrafted vs CNN vs fusi | praproses terbaik dari E2 (atau tanpa praproses, ditentukan di protokol) |
 | **E4** *(opsional)* | RQ4 segmentasi | input: citra penuh / crop margin 10–20% / latar dihapus × segmentasi Otsu vs U-Net | MobileNetV3, split |
+| **E5** | RQ5 Derm-MobileNetV3 | A0, A0+P, AL, A1, A3, A3-L, A3-C, A4 (lihat `riset/PROPOSAL.md` §4) | hiperparameter, augmentasi, split, seed |
 
 Untuk RQ4, kualitas segmentasi juga diukur (Dice/IoU di ISIC 2018 Task 1 bagian uji yang bebas irisan).
 
@@ -193,6 +194,14 @@ Re-implementasi tidak persis, irisan antar-dataset, pemetaan label ISIC 2019, va
 - [ ] **E2 Ablasi praproses** — 8 kombinasi × 2 model × 5 fold
 - [ ] **E3 Representasi** — handcrafted vs CNN vs fusi
 - [ ] **E4 Segmentasi** *(opsional)* — latih U-Net, bandingkan dengan Otsu, lalu tiga mode input
+- [ ] **E5 Derm-MobileNetV3 (RQ5)** — `tugas/pcd-lesi-kulit/eksperimen/01-derm-mobilenetv3/`
+  - [x] Modul `citra/derm.py` (M1, M2, M3, varian AL) + tes identitas saat inisialisasi
+  - [x] `citra/segmentasi.py` (Otsu) + `citra/split.py` (StratifiedGroupKFold per lesi) beserta tes
+  - [x] Cache 256 px + mask Otsu (`siapkan.py`; 439/10.015 jatuh ke elips cadangan)
+  - [x] Uji jalan `config-cepat.yaml` (8 varian, 1 fold, 2 epoch) → `hasil/20261108-215858`
+  - [ ] Run penuh 8 varian × 5 fold (1×5), lalu 3×5 bila MDE menuntut
+  - [ ] Mask U-Net (ISIC 2018 Task 1, irisan dikeluarkan) untuk sub-varian A3
+  - [ ] Ulang dengan split v1 (dedup pHash) dan uji hold-out 1.512 citra
 
 ### 4.6 Uji eksternal (sekali)
 - [ ] Konfigurasi final setiap RQ diuji pada ISIC 2018 Test (1.512 citra) dengan bootstrap CI

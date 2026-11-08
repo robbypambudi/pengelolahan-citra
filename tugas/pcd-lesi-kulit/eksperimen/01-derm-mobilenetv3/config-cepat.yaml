@@ -1,0 +1,32 @@
+# Uji jalan: semua varian, 1 fold, 2 epoch, ±1.500 citra. Angkanya TIDAK untuk laporan.
+nama: derm-mobilenetv3-ablasi-cepat
+mode: cepat
+seed: 42
+
+data: {ukuran_cache: 256, ukuran_input: 224, sumber_mask: otsu, maks_citra: 1500}
+
+split:
+  n_fold: 5
+  seed_ulangan: [0]
+  fold_dipakai: [0]
+  frac_validasi: 0.1
+  file: null              # split subset tidak disimpan
+
+latih: {epoch: 2, batch: 64, lr_dasar: 3.0e-4, lr_modul: 3.0e-3, weight_decay: 1.0e-4,
+        warmup_epoch: 1, pilih_epoch: terakhir, patience: 8, bobot_kelas: true, amp: true, batch_eval: 256}
+
+augmentasi: {rotasi: true, flip: true, skala_min: 0.8, geser: 0.1, kecerahan: 0.1, kontras: 0.1}
+
+model: {lapisan_m3: 16, lebar_cincin_px: 16, k_rambut: 11, p_awal: 6.0, bottleneck: 128}
+
+varian:
+  - {kode: A0}
+  - {kode: A0+P, m1_cc: true, m1_rambut: true, praproses_tetap: true}
+  - {kode: AL, lilhore: true}
+  - {kode: A1, m1_cc: true, m1_rambut: true}
+  - {kode: A3, m3: true}
+  - {kode: A3-L, m3: true, m3_mode: lesi}
+  - {kode: A3-C, m3: true, m3_mode: cincin}
+  - {kode: A4, m1_cc: true, m1_rambut: true, m3: true}
+
+statistik: {pembanding: A0, alpha: 0.05, sesoi_bacc: 0.02}
