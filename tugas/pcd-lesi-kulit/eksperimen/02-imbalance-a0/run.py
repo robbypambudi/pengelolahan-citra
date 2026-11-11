@@ -81,7 +81,7 @@ def latih(model, X, M, y, idx_lat, idx_val, cfg, strategi, seed):
             b = urut[i:i + cl["batch"]]
             x, m = eks01.augmentasi(*eks01.ke_tensor(X, M, b), cfg["augmentasi"], ukuran, gen)
             with torch.autocast(DEV, dtype=torch.bfloat16, enabled=cl["amp"]):
-                logit = model(x)
+                logit = model(x, m) if getattr(model, "butuh_mask", False) else model(x)
             logit, yb = logit.float(), y_t[b]
             if loss_jenis == "ce":
                 loss = F.cross_entropy(logit, yb, weight=w)

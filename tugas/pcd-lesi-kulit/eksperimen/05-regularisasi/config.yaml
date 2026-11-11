@@ -1,0 +1,38 @@
+# Eksperimen 05 — regime pelatihan pada A0 (arsitektur TIDAK diubah).
+# Semua pengaturan selain `varian[].regime` SAMA dengan eksperimen 03/04.
+# Hiperparameter regularisasi = nilai bawaan paper asal, TANPA tuning [A].
+nama: regularisasi
+mode: penuh
+seed: 42
+
+data: {ukuran_cache: 256, ukuran_input: 224, sumber_mask: otsu, maks_citra: null}
+
+split:
+  n_fold: 5
+  seed_ulangan: [0]       # split identik dengan eksperimen 01–04
+  fold_dipakai: null
+  frac_validasi: 0.1
+
+latih: {epoch: 20, batch: 64, lr_dasar: 3.0e-4, lr_modul: 3.0e-3, weight_decay: 1.0e-4,
+        warmup_epoch: 1, amp: true, batch_eval: 256}
+
+augmentasi: {rotasi: true, flip: true, skala_min: 0.8, geser: 0.1, kecerahan: 0.1, kontras: 0.1}
+
+model: {lapisan_m3: 16, lebar_cincin_px: 16, k_rambut: 11, p_awal: 6.0, bottleneck: 128, dilasi_tutup_px: 16}
+
+strategi: {kode: S6-logit-adj, loss: logit_adjusted, tau: 1.0}
+
+varian:
+  - {kode: A0}                                                    # acuan; harus = A0 eksperimen 02–04
+  - {kode: R-ls, regime: {label_smoothing: 0.1}}                  # Szegedy dkk. (2016)
+  - {kode: R-mixup, regime: {mixup: 0.2}}                         # α = 0,2 (Zhang dkk., 2018), setiap batch
+  - {kode: R-cutmix, regime: {cutmix: 1.0}}                       # α = 1,0 (Yun dkk., 2019), setiap batch
+  - {kode: R-sd, regime: {stochastic_depth: 0.2}}                 # p maks 0,2, linear per kedalaman (Huang dkk., 2016)
+  - {kode: R-10ep, regime: {epoch: 10}}                           # BACC val A0 memuncak di ep 10–12 (eksperimen 03/04)
+  - {kode: R-latar, regime: {tukar_latar: 0.5, dilasi_px: 16}}    # tukar latar, 50% batch (usulan kami; H5d)
+
+statistik:
+  pembanding: A0
+  alpha: 0.05
+  sesoi_bacc: 0.02
+  kandidat: [R-ls, R-mixup, R-cutmix, R-sd, R-10ep, R-latar]

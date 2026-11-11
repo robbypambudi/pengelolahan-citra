@@ -1,0 +1,35 @@
+# Eksperimen 04 — MobileNetV3-Large + CBAM / Coordinate Attention.
+# Semua pengaturan selain `varian` SAMA dengan eksperimen 03 (S6-logit-adj, 20 epoch, split seed 0).
+nama: attention
+mode: penuh
+seed: 42
+
+data: {ukuran_cache: 256, ukuran_input: 224, sumber_mask: otsu, maks_citra: null}
+
+split:
+  n_fold: 5
+  seed_ulangan: [0]       # split identik dengan eksperimen 01–03
+  fold_dipakai: null
+  frac_validasi: 0.1
+
+latih: {epoch: 20, batch: 64, lr_dasar: 3.0e-4, lr_modul: 3.0e-3, weight_decay: 1.0e-4,
+        warmup_epoch: 1, amp: true, batch_eval: 256}
+
+augmentasi: {rotasi: true, flip: true, skala_min: 0.8, geser: 0.1, kecerahan: 0.1, kontras: 0.1}
+
+model: {lapisan_m3: 16, lebar_cincin_px: 16, k_rambut: 11, p_awal: 6.0, bottleneck: 128, dilasi_tutup_px: 16}
+
+strategi: {kode: S6-logit-adj, loss: logit_adjusted, tau: 1.0}   # pemenang eksperimen 02
+
+varian:
+  - {kode: A0}                                          # acuan; harus = A0 eksperimen 03
+  - {kode: CBAM-akhir, attention: cbam, letak: akhir}   # CBAM penuh pada peta 960×7×7 sebelum GAP
+  - {kode: CBAM-blok, attention: cbam, letak: blok}     # SE pralatih + attention spasial di 8 blok ber-SE
+  - {kode: CA-akhir, attention: ca, letak: akhir}       # coordinate attention pada peta 960×7×7
+  - {kode: CA-blok, attention: ca, letak: blok}         # SE pralatih + coordinate attention di 8 blok ber-SE
+
+statistik:
+  pembanding: A0
+  alpha: 0.05
+  sesoi_bacc: 0.02
+  kandidat: [CBAM-akhir, CBAM-blok, CA-akhir, CA-blok]

@@ -1,0 +1,46 @@
+# Eksperimen 03 — Derm-MobileNetV3 v2 (letak M3, lebar cincin) + uji jalan pintas H5d.
+# Semua pengaturan selain `varian` dan `strategi` SAMA dengan eksperimen 01/02.
+# [P] = dari proposal/keputusan eksperimen sebelumnya, [A] = asumsi/pilihan baru.
+nama: derm-v2
+mode: penuh
+seed: 42
+
+data: {ukuran_cache: 256, ukuran_input: 224, sumber_mask: otsu, maks_citra: null}
+
+split:
+  n_fold: 5
+  seed_ulangan: [0]       # split identik dengan eksperimen 01/02
+  fold_dipakai: null
+  frac_validasi: 0.1      # validasi dalam: pemilihan varian A3 dan pencarian bias keputusan
+
+latih: {epoch: 20, batch: 64, lr_dasar: 3.0e-4, lr_modul: 3.0e-3, weight_decay: 1.0e-4,
+        warmup_epoch: 1, amp: true, batch_eval: 256}
+
+augmentasi: {rotasi: true, flip: true, skala_min: 0.8, geser: 0.1, kecerahan: 0.1, kontras: 0.1}
+
+model:
+  lapisan_m3: 16          # bawaan; ditimpa per varian
+  lebar_cincin_px: 16     # bawaan; ditimpa per varian
+  k_rambut: 11
+  p_awal: 6.0
+  bottleneck: 128
+  dilasi_tutup_px: 16     # [A] A0-latar: lesi + 16 px tepinya ditutup (mask Otsu cenderung sempit; 8 px masih membocorkan halo pigmen)
+
+strategi: {kode: S6-logit-adj, loss: logit_adjusted, tau: 1.0}   # [P] pemenang eksperimen 02
+
+# Blok MobileNetV3-Large (input 224): 6 → 40 kanal 28×28; 12 → 112 kanal 14×14; 16 → 960 kanal 7×7.
+varian:
+  - {kode: A0}                                                        # acuan; harus = S6 eksperimen 02
+  - {kode: A3-b16-r16, m3: true, lapisan_m3: 16, lebar_cincin_px: 16} # = A3 eksperimen 01, kini dengan S6
+  - {kode: A3-b12-r16, m3: true, lapisan_m3: 12, lebar_cincin_px: 16}
+  - {kode: A3-b12-r32, m3: true, lapisan_m3: 12, lebar_cincin_px: 32}
+  - {kode: A3-b12-r48, m3: true, lapisan_m3: 12, lebar_cincin_px: 48}
+  - {kode: A3-b6-r16, m3: true, lapisan_m3: 6, lebar_cincin_px: 16}
+  - {kode: A0-lesi, tutup_input: lesi}                                # H5d: hanya lesi terlihat
+  - {kode: A0-latar, tutup_input: latar}                              # H5d: lesi ditutup
+
+statistik:
+  pembanding: A0
+  alpha: 0.05
+  sesoi_bacc: 0.02
+  h5d: [[A0-lesi, A0-latar], [A0, A0-lesi], [A0, A0-latar]]

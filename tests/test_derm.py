@@ -148,3 +148,21 @@ def test_kelompok_parameter_mencakup_semua():
     assert len(ids) == len(set(ids)) == len(list(model.parameters()))
     gerbang = {id(model.cc.gerbang), id(model.cabang_m3.gerbang)}
     assert all(g["weight_decay"] == 0 for g in grup if gerbang & {id(p) for p in g["params"]})
+
+
+# ---------------------------------------------------------------- H5d: penutupan input
+def test_tutup_input_lesi_dan_latar():
+    from citra.derm import IMAGENET_MEAN, TutupInput
+    x, mask = _input()
+    isi = torch.tensor(IMAGENET_MEAN).view(1, 3, 1, 1)
+    dalam = DermMobileNetV3(pralatih=False)
+    lesi = TutupInput(dalam, "lesi").tutup(x, mask)
+    assert torch.equal(lesi[..., 100, 100], x[..., 100, 100])            # di dalam lesi utuh
+    torch.testing.assert_close(lesi[..., 5, 5], isi[..., 0, 0].expand(2, 3))
+    latar = TutupInput(dalam, "latar", dilasi_px=8).tutup(x, mask)
+    torch.testing.assert_close(latar[..., 100, 100], isi[..., 0, 0].expand(2, 3))
+    torch.testing.assert_close(latar[..., 100, 155], isi[..., 0, 0].expand(2, 3))  # tepi lesi (dilasi) ikut ditutup
+    assert torch.equal(latar[..., 5, 5], x[..., 5, 5]) and torch.equal(latar[..., 100, 160], x[..., 100, 160])
+    with pytest.raises(ValueError):
+        TutupInput(dalam, "cincin")
+    assert TutupInput(dalam, "lesi")(x, mask).shape == (2, 7)

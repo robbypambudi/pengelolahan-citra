@@ -248,6 +248,8 @@ class DermMobileNetV3(nn.Module):
         if m3:
             self.m3 = PoolingLesiSekitar(self._kanal(lapisan_m3), lebar_cincin_px, m3_mode)
             self.cabang_m3 = _CabangBergerbang(self.m3.dim_keluar, c_gap, bottleneck)
+        self.attn_akhir = None              # diisi citra.attention.pasang_attention(letak="akhir")
+        self._id_modul_tambahan = set()     # parameter modul baru di dalam `features` (attention per blok)
 
     def _kanal(self, i):
         with torch.no_grad():
@@ -281,6 +283,8 @@ class DermMobileNetV3(nn.Module):
                 f_m2 = h
             if self.m3 is not None and j == self.lapisan_m3:
                 f_m3 = h
+        if self.attn_akhir is not None:
+            h = self.attn_akhir(h)
         z = torch.flatten(self.avgpool(h), 1)
         if self.m2 is not None:
             z = z + self.cabang_m2(self.m2(f_m2))
@@ -296,7 +300,7 @@ class DermMobileNetV3(nn.Module):
         """
         dasar, modul, tanpa_wd = [], [], []
         for nama, p in self.named_parameters():
-            if nama.startswith(("features.", "classifier.")):
+            if nama.startswith(("features.", "classifier.")) and id(p) not in self._id_modul_tambahan:
                 dasar.append(p)
             elif p.ndim == 0:
                 tanpa_wd.append(p)
@@ -322,7 +326,54 @@ class DermMobileNetV3(nn.Module):
             if cabang is not None:
                 out[f"{nama}_gerbang"] = float(cabang.gerbang)
                 out[f"{nama}_norma_bobot_akhir"] = float(cabang.proyeksi[-1].weight.norm())
+        from citra.attention import gerbang_attention
+        out.update(gerbang_attention(self))
         return out
+
+
+# --------------------------------------------------------------------------- H5d
+class TutupInput(nn.Module):
+    """Uji jalan pintas H5d: tutup sebagian citra di INPUT, lalu teruskan ke model dalam.
+
+    mode "lesi"  : hanya lesi yang terlihat; piksel di luar mask diganti warna rata-rata ImageNet
+    mode "latar" : lesi ditutup; mask didilasi `dilasi_px` dulu agar tepi lesi tidak bocor
+
+    Setelah normalisasi ImageNet di dalam model, piksel yang ditutup bernilai 0.
+    Bentuk siluet mask tetap terlihat di kedua mode. Ini keterbatasan yang sama untuk keduanya
+    (Bissoto dkk., 2019, memakai penutupan serupa).
+    """
+
+    MODE = ("lesi", "latar")
+
+    def __init__(self, model, mode, dilasi_px=8):
+        super().__init__()
+        if mode not in self.MODE:
+            raise ValueError(f"mode harus salah satu dari {self.MODE}")
+        self.model, self.mode, self.dilasi_px = model, mode, dilasi_px
+        self.register_buffer("isi", torch.tensor(IMAGENET_MEAN).view(1, 3, 1, 1), persistent=False)
+
+    butuh_mask = True
+
+    def tutup(self, x, mask):
+        if self.mode == "lesi":
+            terlihat = mask
+        else:
+            k = 2 * self.dilasi_px + 1
+            terlihat = 1 - (_dilasi(mask, k) if self.dilasi_px > 0 else mask)
+        return x * terlihat + self.isi * (1 - terlihat)
+
+    def forward(self, x, mask):
+        h = self.tutup(x, mask)
+        return self.model(h, mask) if getattr(self.model, "butuh_mask", False) else self.model(h)
+
+    def kelompok_parameter(self, *a, **k):
+        return self.model.kelompok_parameter(*a, **k)
+
+    def parameter_terpelajari(self):
+        return self.model.parameter_terpelajari()
+
+    def praproses(self, x):
+        return self.model.praproses(x)
 
 
 # --------------------------------------------------------------------------- AL
@@ -370,5 +421,7 @@ def hitung_biaya(model, ukuran=224, perangkat="cpu"):
     with FlopCounterMode(display=False) as fc, torch.no_grad():
         model(x, mask) if getattr(model, "butuh_mask", False) else model(x)
     total = sum(p.numel() for p in model.parameters())
-    dasar = sum(p.numel() for n, p in model.named_parameters() if n.startswith(("features.", "classifier.")))
+    tambahan = getattr(getattr(model, "model", model), "_id_modul_tambahan", set())
+    dasar = sum(p.numel() for n, p in model.named_parameters()
+                if n.removeprefix("model.").startswith(("features.", "classifier.")) and id(p) not in tambahan)
     return {"parameter": total, "parameter_tambahan": total - dasar, "flops": fc.get_total_flops()}

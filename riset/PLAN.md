@@ -199,7 +199,12 @@ Re-implementasi tidak persis, irisan antar-dataset, pemetaan label ISIC 2019, va
   - [x] `citra/segmentasi.py` (Otsu) + `citra/split.py` (StratifiedGroupKFold per lesi) beserta tes
   - [x] Cache 256 px + mask Otsu (`siapkan.py`; 439/10.015 jatuh ke elips cadangan)
   - [x] Uji jalan `config-cepat.yaml` (8 varian, 1 fold, 2 epoch) → `hasil/20261108-215858`
-  - [ ] Run penuh 8 varian × 5 fold (1×5), lalu 3×5 bila MDE menuntut
+  - [x] Run penuh 8 varian × 5 fold (1×5) → `hasil/20261108-222958` (tidak ada yang beda bermakna vs A0; H5d tak teruji)
+  - [x] Eksperimen 02 strategi ketidakseimbangan (`02-imbalance-a0/`) → S6-logit-adj + bias_val
+  - [x] Eksperimen 03 Derm v2 (`03-derm-v2/`) → `hasil/20261109-054525`: H5a tidak didukung (semua A3 ≤ A0); H5d lesi − latar +14,2 poin, tetapi latar saja BACC 0,485
+  - [x] Eksperimen 04 attention (`04-attention/`) → `hasil/20261109-123813`: CBAM/CA (akhir, blok) semua ≤ A0; terdekat CBAM-blok −0,15 poin
+  - [x] Eksperimen 05 regularisasi (`05-regularisasi/`) → `hasil/20261109-164154`: terpilih R-cutmix, +bias_val +1,05 poin (p_holm 1,000) → tidak didukung; argmax mixup/cutmix/SD +2,6–3,4 poin (5/5 fold, p_holm ≥ 0,35)
+  - [ ] 3×5 fold untuk varian terpilih bila MDE menuntut
   - [ ] Mask U-Net (ISIC 2018 Task 1, irisan dikeluarkan) untuk sub-varian A3
   - [ ] Ulang dengan split v1 (dedup pHash) dan uji hold-out 1.512 citra
 
