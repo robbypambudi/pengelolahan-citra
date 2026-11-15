@@ -1,0 +1,41 @@
+# Uji jalan; angkanya TIDAK untuk laporan.
+# Eksperimen 06 — konfirmasi temuan argmax eksperimen 05 pada split BARU (seed ulangan 1 dan 2).
+# Semua pengaturan selain `split.seed_ulangan` dan daftar varian SAMA dengan eksperimen 05.
+# Hipotesis dan aturan keputusan dibekukan di README.md SEBELUM run penuh.
+nama: konfirmasi-regularisasi-cepat
+mode: cepat
+seed: 42
+
+data: {ukuran_cache: 256, ukuran_input: 224, sumber_mask: otsu, maks_citra: 1500}
+
+split:
+  n_fold: 5
+  seed_ulangan: [1, 2]    # belum pernah dipakai di eksperimen 00–05; seed 0 = pembangkit hipotesis, TIDAK digabung
+  fold_dipakai: [0]
+  frac_validasi: 0.1
+
+latih: {epoch: 2, batch: 64, lr_dasar: 3.0e-4, lr_modul: 3.0e-3, weight_decay: 1.0e-4,
+        warmup_epoch: 1, amp: true, batch_eval: 256}
+
+augmentasi: {rotasi: true, flip: true, skala_min: 0.8, geser: 0.1, kecerahan: 0.1, kontras: 0.1}
+
+model: {lapisan_m3: 16, lebar_cincin_px: 16, k_rambut: 11, p_awal: 6.0, bottleneck: 128, dilasi_tutup_px: 16}
+
+strategi: {kode: S6-logit-adj, loss: logit_adjusted, tau: 1.0}
+
+varian:
+  - {kode: A0}                                                         # acuan
+  - {kode: R-mixup, regime: {mixup: 0.2}}                              # = eksperimen 05
+  - {kode: R-sd, regime: {stochastic_depth: 0.2}}                      # = eksperimen 05
+  - {kode: R-cutmix, regime: {cutmix: 1.0}}                            # = eksperimen 05
+  - {kode: R-cutmix-sd, regime: {cutmix: 1.0, stochastic_depth: 0.2}}  # eksploratif, DI LUAR keluarga uji
+
+statistik:
+  pembanding: A0
+  alpha: 0.05
+  sesoi_bacc: 0.02
+  kandidat: [R-mixup, R-sd, R-cutmix, R-cutmix-sd]   # hanya untuk ringkasan bawaan eksperimen 03
+  konfirmasi:
+    primer: [R-mixup, R-sd, R-cutmix]                # H1: X|argmax − A0|argmax, Holm atas 3
+    sekunder: [R-mixup, R-sd, R-cutmix]              # H2: X|argmax − A0|bias_val, Holm atas 3
+    eksploratif: [R-cutmix-sd]                       # dilaporkan, tanpa klaim

@@ -235,6 +235,7 @@ def main(folder=None, pembuat=None, pelatih=None):
         for k, b in u.items():
             print(f"  {k:<36}{b['selisih_bacc_rata']:>+9.4f}  {b['n_fold_positif']}/{len(b['selisih_per_fold'])} fold +"
                   f"  p_holm {b.get('p_holm', float('nan')):.3f}")
+    return run
 
 
 if __name__ == "__main__":
