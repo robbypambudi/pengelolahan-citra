@@ -204,6 +204,7 @@ Re-implementasi tidak persis, irisan antar-dataset, pemetaan label ISIC 2019, va
   - [x] Eksperimen 03 Derm v2 (`03-derm-v2/`) → `hasil/20261109-054525`: H5a tidak didukung (semua A3 ≤ A0); H5d lesi − latar +14,2 poin, tetapi latar saja BACC 0,485
   - [x] Eksperimen 04 attention (`04-attention/`) → `hasil/20261109-123813`: CBAM/CA (akhir, blok) semua ≤ A0; terdekat CBAM-blok −0,15 poin
   - [x] Eksperimen 05 regularisasi (`05-regularisasi/`) → `hasil/20261109-164154`: terpilih R-cutmix, +bias_val +1,05 poin (p_holm 1,000) → tidak didukung; argmax mixup/cutmix/SD +2,6–3,4 poin (5/5 fold, p_holm ≥ 0,35)
+  - [x] Eksperimen 06 konfirmasi regularisasi (`06-konfirmasi-regularisasi/`, split seed 1+2, 10 fold) → `hasil/20261115-150601`: H1/H2 tidak didukung; terdekat R-cutmix argmax +3,82 poin vs A0 argmax (9/10 fold, p_holm 0,056) dan +2,91 vs A0 +bias_val (p_holm 0,120); arah konsisten dengan eksperimen 05
   - [ ] 3×5 fold untuk varian terpilih bila MDE menuntut
   - [ ] Mask U-Net (ISIC 2018 Task 1, irisan dikeluarkan) untuk sub-varian A3
   - [ ] Ulang dengan split v1 (dedup pHash) dan uji hold-out 1.512 citra

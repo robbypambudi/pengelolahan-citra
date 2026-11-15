@@ -74,7 +74,78 @@ uv run python tugas/pcd-lesi-kulit/eksperimen/06-konfirmasi-regularisasi/run.py 
 Uji jalan `hasil/20261115-150430` (1.500 citra, 2 epoch) hanya memastikan alur berjalan. Angkanya **tidak** untuk laporan.
 
 ## Hasil
-[BELUM DIJALANKAN]
+Run `hasil/20261115-150601`:
+- 5 varian × 10 fold, durasi 1,91 jam;
+- dijalankan pada commit df38452 dengan *working tree* bersih;
+- metrik tambahan ada di `metrik_tambahan.json` (selisih maks vs `metrics.json` 0,0007, akibat pembulatan bias).
+
+**BACC uji (rata-rata ± SD, 10 fold):**
+
+| Varian | argmax | +bias_val | AUROC makro (argmax) | ECE (argmax) | Sens. mel (argmax / +bias_val) |
+|---|---|---|---|---|---|
+| A0 | 0,7353 ± 0,0215 | 0,7444 ± 0,0211 | 0,9592 | 0,1100 | 50,0% / 62,6% |
+| R-mixup | 0,7568 ± 0,0267 | 0,7420 ± 0,0330 | 0,9413 | 0,0729 | 53,2% / 60,6% |
+| R-sd | 0,7532 ± 0,0206 | 0,7433 ± 0,0206 | 0,9643 | 0,0750 | 55,2% / 67,4% |
+| **R-cutmix** | **0,7735 ± 0,0125** | 0,7615 ± 0,0156 | 0,9625 | **0,0221** | 55,3% / 58,5% |
+| R-cutmix-sd | 0,7623 ± 0,0141 | 0,7482 ± 0,0195 | 0,9605 | 0,0300 | 54,8% / 65,6% |
+
+**Uji konfirmasi** (*corrected resampled t-test*, Holm per keluarga, SESOI 2 poin):
+
+| Perbandingan | Δ BACC | Δ ulangan 1 / 2 | Fold + | p | p_holm | Putusan |
+|---|---|---|---|---|---|---|
+| H1 R-mixup − A0 (argmax) | +2,15 | +2,67 / +1,63 | 9/10 | 0,047 | 0,094 | tidak didukung |
+| H1 R-sd − A0 (argmax) | +1,79 | +1,49 / +2,10 | 8/10 | 0,120 | 0,120 | tidak didukung |
+| H1 R-cutmix − A0 (argmax) | +3,82 | +3,05 / +4,58 | 9/10 | 0,019 | 0,056 | tidak didukung |
+| H2 R-mixup argmax − A0 +bias_val | +1,24 | +2,53 / −0,04 | 8/10 | 0,337 | 0,675 | tidak didukung |
+| H2 R-sd argmax − A0 +bias_val | +0,89 | +1,35 / +0,42 | 7/10 | 0,402 | 0,675 | tidak didukung |
+| H2 R-cutmix argmax − A0 +bias_val | +2,91 | +2,92 / +2,91 | 9/10 | 0,040 | 0,120 | tidak didukung |
+| eksploratif R-cutmix-sd − A0 (argmax) | +2,70 | +2,55 / +2,85 | 10/10 | 0,043 | – | tanpa klaim |
+| eksploratif R-cutmix-sd argmax − A0 +bias_val | +1,79 | +2,41 / +1,18 | 8/10 | 0,171 | – | tanpa klaim |
+
+**Metrik lain (argmax, rata-rata 10 fold):**
+
+| Varian | F1 makro | Presisi makro | MCC | Brier | Log loss |
+|---|---|---|---|---|---|
+| A0 | **0,6906** | **0,6632** | **0,6708** | 0,2782 | 0,7497 |
+| R-mixup | 0,6538 | 0,5989 | 0,6498 | 0,3072 | 0,6676 |
+| R-sd | 0,6854 | 0,6454 | 0,6691 | **0,2656** | 0,5757 |
+| R-cutmix | 0,6629 | 0,6095 | 0,6621 | 0,2700 | **0,5419** |
+| R-cutmix-sd | 0,6317 | 0,5820 | 0,6399 | 0,2933 | 0,5909 |
+
+Ringkasan bawaan alur eksperimen 03 memilih R-cutmix sebagai varian dengan BACC validasi tertinggi (0,7661). Ini sama dengan eksperimen 05.
 
 ## Kesimpulan
-[BELUM DIJALANKAN]
+**Menurut aturan yang dibekukan, H1 dan H2 tidak didukung.** Tidak ada perbandingan yang memenuhi kedua syarat sekaligus (Δ ≥ 2 poin dan p_holm < 0,05).
+- **R-cutmix** paling dekat:
+  - Δ +3,82 poin, jauh di atas SESOI;
+  - positif di 9/10 fold dan di kedua ulangan;
+  - p mentah 0,019, tetapi p_holm 0,056, sedikit di atas α.
+- **R-mixup:** Δ +2,15 poin melewati SESOI, tetapi p_holm 0,094.
+- **R-sd:** Δ +1,79 poin, di bawah SESOI.
+
+**Yang dapat dikatakan secara jujur:**
+- **Arahnya konsisten.** Di dua split independen (seed 0 di eksperimen 05; seed 1 dan 2 di sini), CutMix dengan argmax selalu di atas A0 argmax:
+  - +2,61 poin pada 5/5 fold;
+  - +3,82 poin pada 9/10 fold.
+
+  Ini bukti yang cukup kuat bahwa efeknya ada. Namun dengan protokol ini, efek tersebut **belum lolos uji yang ditetapkan sebelumnya**, jadi belum boleh ditulis sebagai "terbukti".
+- Sesuai perhitungan daya uji sebelum run, koreksi Nadeau–Bengio dengan rasio uji/latih 0,25 membuat efek sekitar 3 poin berada di batas deteksi. Menambah fold hampir tidak membantu. Yang membantu adalah varians selisih yang lebih kecil, atau uji eksternal (ISIC 2018 Test) dengan bootstrap.
+- Pola eksperimen 05 terulang: penyetelan bias (+bias_val) **menurunkan** BACC varian yang diregularisasi (R-cutmix −1,20 poin; R-mixup −1,48 poin), tetapi menaikkan A0 (+0,91 poin).
+
+**Peringatan: BACC bukan satu-satunya sudut pandang.**
+- Sensitivitas melanoma tertinggi tetap diraih +bias_val: R-sd 67,4%, R-cutmix-sd 65,6%, A0 62,6%. R-cutmix argmax hanya 55,3%. Bila tujuan klinisnya adalah tidak melewatkan melanoma, "cutmix + argmax" belum tentu pilihan terbaik.
+- F1 makro, presisi makro, dan MCC tertinggi tetap dimiliki A0 argmax. Regularisasi menaikkan recall kelas minor (BACC) dengan mengorbankan presisi, sama seperti di eksperimen 05.
+- Kalibrasi jelas lebih baik dengan CutMix: ECE 0,0221 vs A0 0,1100, dan log loss 0,5419 vs 0,7497. R-sd memiliki Brier terendah (0,2656). Selisih kalibrasi ini tidak diuji secara formal.
+- R-mixup menurunkan AUROC makro (0,9413 vs 0,9592), padahal BACC-nya naik.
+
+**Eksploratif:** CutMix + SD tidak lebih baik daripada CutMix saja (0,7623 vs 0,7735 argmax). Kombinasi ini tidak perlu dilanjutkan.
+
+**Keterbatasan:**
+- Kesimpulan ini masih bergantung pada split v0 tanpa dedup pHash.
+- Hasilnya juga baru konfirmasi internal, belum diuji pada data eksternal.
+- Hiperparameter tidak dituning, sehingga α CutMix atau Mixup yang lain bisa memberi hasil berbeda. Namun tuning harus dilakukan di validasi dalam, bukan di fold uji ini.
+
+**Usulan langkah berikutnya:**
+1. Bekukan **A0 + CutMix (argmax)** sebagai kandidat konfigurasi final, berdampingan dengan A0 +bias_val sebagai pembanding klinis (sensitivitas mel).
+2. Uji keduanya pada ISIC 2018 Test (1.512 citra) dengan bootstrap CI. Ini adalah uji yang ditunda di `riset/PLAN.md`.
+3. Sebelum itu, buat split v1 dengan dedup pHash agar uji eksternal bersih dari duplikat.
